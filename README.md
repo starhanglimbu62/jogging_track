@@ -1,57 +1,35 @@
 # Jogging Tracker
 
-![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)
-![Django](https://img.shields.io/badge/Django-2.2-092E20?logo=django&logoColor=white)
-![Django REST Framework](https://img.shields.io/badge/DRF-3.9-A30000?logo=django&logoColor=white)
-![Database](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)
+Jogging Tracker is a small Django project for keeping track of running sessions. It has a simple Vue interface and a REST API behind it.
 
-A Django and Django REST Framework application for recording jogging sessions, calculating average speed, and reviewing weekly running statistics.
+You can create an account, save your runs, see your average speed, filter runs by date, and view a weekly summary.
 
-The project includes a Vue 3 single-page interface served by Django. All authenticated actions are performed through the REST API using AJAX requests, so the page does not need to be refreshed after creating, updating, filtering, or deleting a run.
+## What it includes
 
-## Table of Contents
+- User registration and JWT login
+- Add, edit, and delete running entries
+- Distance, duration, date, and average speed for each entry
+- Date range filtering
+- Weekly distance, duration, and speed reports
+- Three user roles: regular user, manager, and admin
+- REST API for all of the main actions
+- A small Vue 3 single-page frontend
 
-- [Features](#-features)
-- [Roles and Permissions](#-roles-and-permissions)
-- [Quickstart](#-quickstart)
-- [Configuration and Security](#-configuration-and-security)
-- [GitHub and Render Deployment](#-github-and-render-deployment)
-- [Using the Application](#-using-the-application)
-- [REST API](#-rest-api)
-- [Testing](#-testing)
-- [Project Structure](#-project-structure)
-- [Contributing](#-contributing)
-- [License](#-license)
+## User roles
 
-## 🚀 Features
-
-- Create an account and sign in with JWT authentication.
-- Add, edit, and delete jogging entries.
-- Store the date, distance, and duration for each entry.
-- Calculate and display the average speed for every entry.
-- Filter entries and reports by an optional date range.
-- Generate weekly totals for distance and duration, including average speed.
-- Restrict records and user-management actions according to the current user's role.
-- Use the REST API directly with tools such as cURL or Postman.
-- Use a responsive, minimal Vue 3 interface served from `templates/index.html`.
-
-## 🔐 Roles and Permissions
-
-The application supports three roles:
-
-| Role | Permissions |
+| Role | Access |
 | --- | --- |
-| Regular user (`USER`) | Create, view, update, and delete their own jogging entries. |
-| User manager (`MANAGER`) | Manage users and their own jogging entries. |
-| Administrator (`ADMIN`) | Manage users and view or manage all jogging entries. Administrators can assign a new entry to another user. |
+| `USER` | Manage their own runs |
+| `MANAGER` | Manage users and their own runs |
+| `ADMIN` | Manage users and all runs |
 
-New accounts are created as regular users. Roles are stored on the user's `UserProfile`.
+New users are given the `USER` role automatically.
 
-## ⚡ Quickstart
+## Running it locally
 
-### Windows PowerShell
+This project uses Python 3.11 and SQLite.
 
-Create a virtual environment, install the dependencies, apply migrations, and start the development server:
+### Windows
 
 ```powershell
 py -3.11 -m venv .venv
@@ -60,133 +38,67 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe manage.py runserver
 ```
 
-### macOS or Linux
+### macOS/Linux
 
-```shell
-python3 -m venv .venv
+```bash
+python3.11 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements.txt
 ./.venv/bin/python manage.py migrate
 ./.venv/bin/python manage.py runserver
 ```
 
-Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in a browser.
+Then open http://127.0.0.1:8000/ in your browser.
 
-The default database is the SQLite file `db.sqlite3`. For a new installation, `manage.py migrate` creates the required Django tables.
+The local database is stored in `db.sqlite3`. It is created when the migrations are run.
 
-## ⚙️ Configuration and Security
+## API
 
-The checked-in settings are intended for local development only:
-
-- `DEBUG` is enabled.
-- CORS allows all origins.
-- The Django `SECRET_KEY` is currently defined in `server/settings.py`.
-- SQLite is used as the default database.
-
-Before deploying publicly, set `DJANGO_SECRET_KEY`, restrict `DJANGO_ALLOWED_HOSTS` and CORS origins, disable `DEBUG`, and use a production-ready database and web server. Never reuse the development secret in production. A template is provided in `.env.example`.
-
-## ☁️ GitHub and Render Deployment
-
-### Upload to GitHub
-
-Create an empty repository on GitHub, then run these commands from the project directory:
-
-```shell
-git init
-git add .
-git commit -m "Initial project setup"
-git branch -M main
-git remote add origin https://github.com/<your-username>/<your-repository>.git
-git push -u origin main
-```
-
-Do not commit `.env`, virtual environments, or `db.sqlite3`; they are excluded by `.gitignore`.
-
-### Deploy on Render
-
-After pushing the repository:
-
-1. In Render, choose **New → Web Service** and connect the GitHub repository.
-2. Select **Python 3**.
-3. Use `pip install -r requirements.txt` as the build command.
-4. Use `gunicorn server.wsgi:application` as the start command.
-5. Add these environment variables:
-   - `DJANGO_SECRET_KEY`: a long, random secret
-   - `DJANGO_ALLOWED_HOSTS`: your Render hostname, such as `jogging-tracker.onrender.com`
-6. Deploy, then run migrations with `python manage.py migrate` using Render's shell or a release command.
-
-The included `Procfile` supplies the Gunicorn start command. SQLite is suitable for local development but is ephemeral on many cloud platforms; use a managed PostgreSQL database for persistent production data and configure Django's database settings before going live.
-
-## 🏃 Using the Application
-
-1. Select **Create account** and register with a username, email address, and password.
-2. Sign in with the new account.
-3. Add a run with its distance, duration, and date.
-4. Use the date filters to narrow the run list and weekly report.
-5. Edit or delete an existing run from the **Runs** table.
-6. Sign out when finished.
-
-Distance is entered in kilometres and duration in minutes. The displayed average speed uses the same values as the API calculation: `distance / duration`.
-
-## 🌐 REST API
-
-All API paths are under `/api/`. Login and registration are public; the remaining endpoints require a JWT bearer token.
-
-### Authentication
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `POST` | `/api/auth/signup/` | Create a regular user account. |
-| `POST` | `/api/auth/login/` | Authenticate and return a JWT token and user details. |
-
-Example login request:
-
-```shell
-curl -X POST http://127.0.0.1:8000/api/auth/login/ \
-  -H "Content-Type: application/json" \
-  -d '{"username":"runner","password":"strong-pass-123"}'
-```
-
-For PowerShell, use a one-line request:
-
-```powershell
-curl.exe -X POST http://127.0.0.1:8000/api/auth/login/ -H "Content-Type: application/json" -d '{"username":"runner","password":"strong-pass-123"}'
-```
-
-Use the returned token on protected requests:
+The API is available under `/api/`. Login and registration do not require authentication. Other endpoints require a token in the request header:
 
 ```text
 Authorization: Bearer your-jwt-token
 ```
 
-### Jogging entries
+### Authentication
 
-| Method | Endpoint | Description |
+| Method | URL | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/entry/` | List entries visible to the authenticated user. |
-| `POST` | `/api/entry/` | Create an entry. |
-| `GET` | `/api/entry/<id>/` | Retrieve one entry. |
-| `PUT` | `/api/entry/<id>/` | Update one entry. |
-| `DELETE` | `/api/entry/<id>/` | Delete one entry. |
+| `POST` | `/api/auth/signup/` | Create an account |
+| `POST` | `/api/auth/login/` | Log in and get a JWT token |
 
-Add `from` and/or `to` query parameters to filter by date:
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{"username":"runner","password":"strong-pass-123"}'
+```
+
+### Running entries
+
+| Method | URL | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/entry/` | List runs |
+| `POST` | `/api/entry/` | Add a run |
+| `GET` | `/api/entry/<id>/` | View one run |
+| `PUT` | `/api/entry/<id>/` | Update a run |
+| `DELETE` | `/api/entry/<id>/` | Delete a run |
+
+Use `from` and `to` to filter by date:
 
 ```text
 /api/entry/?from=2026-01-01&to=2026-01-31
 ```
 
-An entry contains `distance`, `duration`, and `date`. Responses also include the owner, entry ID, and calculated `average_speed`.
+Distance is measured in kilometres and duration is measured in minutes. Average speed is calculated as:
 
-### User management
+```text
+distance / duration
+```
 
-Users with the `MANAGER` or `ADMIN` role can use the user endpoint:
+### Users
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/api/user/` | List users. |
-| `POST` | `/api/user/` | Create a regular user. |
-| `GET` | `/api/user/<id>/` | Retrieve a user. |
-| `PUT` | `/api/user/<id>/` | Update a user. |
-| `DELETE` | `/api/user/<id>/` | Delete a user. |
+Managers and admins can use `/api/user/` to list, create, update, and delete users.
 
 ### Weekly report
 
@@ -195,59 +107,49 @@ GET /api/weekly-report/
 GET /api/weekly-report/?from=2026-01-01&to=2026-01-31
 ```
 
-The response groups entries by year and week and returns:
+The report groups runs by year and week and returns the total distance, total duration, and average speed.
 
-- `total_distance`
-- `total_duration`
-- `average_speed`
+## Running the tests
 
-The legacy alias `/api/weeklyReport/` is also available.
-
-## 🧪 Testing
-
-Run the API test suite with:
-
-### Windows PowerShell
+Windows:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py test api
 ```
 
-### macOS or Linux
+macOS/Linux:
 
-```shell
+```bash
 ./.venv/bin/python manage.py test api
 ```
 
-The tests cover registration, password hashing, authentication failures, entry ownership, date filtering, weekly reports, administrator access, and user-management permissions.
+## Deployment
 
-## 📁 Project Structure
+The project includes a `Procfile` for running with Gunicorn:
 
 ```text
-api/
-  models.py       User profiles and jogging entries
-  serializers.py  REST request and response serializers
-  permissions.py  Role and ownership permissions
-  views.py        Authentication, CRUD, and reporting endpoints
-  tests.py        REST API tests
-server/
-  settings.py     Django and REST framework configuration
-  urls.py         Application routing
-templates/
-  index.html      Vue 3 single-page interface
-manage.py         Django command-line entry point
-requirements.txt  Python dependencies
+web: gunicorn server.wsgi:application
 ```
 
-## 🤝 Contributing
+It can be deployed to services such as Render. Set these environment variables on the hosting platform:
 
-1. Create a feature branch.
-2. Make focused changes and add or update tests where appropriate.
-3. Run `python manage.py test api`.
-4. Open a pull request describing the change and its validation.
+- `DJANGO_SECRET_KEY`
+- `DJANGO_ALLOWED_HOSTS`
 
-Bug reports and feature requests are welcome through GitHub Issues.
+The current SQLite setup is fine for local use, but a hosted deployment should use a persistent database such as PostgreSQL.
 
-## 📄 License
+The settings in this project are mainly for development. Before deploying publicly, turn off `DEBUG`, restrict allowed hosts and CORS origins, and use a production database.
 
-No license has been specified for this project yet. Add a `LICENSE` file before distributing or accepting external contributions.
+## Project layout
+
+```text
+api/          Models, serializers, views, permissions, and tests
+server/       Django project settings and URLs
+templates/    Vue single-page interface
+manage.py     Django command-line utility
+requirements.txt
+```
+
+## License
+
+No license has been added yet.
