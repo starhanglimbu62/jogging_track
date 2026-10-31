@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jogging Tracker</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f3f6fa; color: #172033; }
+    main { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; }
+    .card { background: white; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 12px #17203314; }
+    form, .filters, .actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+    input, button { padding: .65rem .8rem; border: 1px solid #ccd5e2; border-radius: 6px; font: inherit; }
+    button { cursor: pointer; background: #2563eb; color: white; border: 0; }
+    button.secondary { background: #64748b; } button.danger { background: #dc2626; }
+    table { width: 100%; border-collapse: collapse; } th, td { padding: .7rem; border-bottom: 1px solid #e5e7eb; text-align: left; }
+    .error { color: #b91c1c; } .success { color: #15803d; } .muted { color: #64748b; }
+  </style>
+</head>
+<body>
+{% verbatim %}
+<main id="app">
+  <section class="card" v-if="!token">
+    <h1>Jogging Tracker</h1>
+    <p class="muted">{{ registering ? 'Create an account' : 'Sign in to manage your runs' }}</p>
+    <form @submit.prevent="registering ? register() : login()">
+      <input v-model="form.username" placeholder="Username" required>
+      <input v-if="registering" v-model="form.email" type="email" placeholder="Email" required>
+      <input v-model="form.password" type="password" placeholder="Password (8+ characters)" required>
+      <button>{{ registering ? 'Register' : 'Sign in' }}</button>
+    </form>
+    <p><button class="secondary" @click="registering = !registering">{{ registering ? 'Already registered?' : 'Create account' }}</button></p>
+    <p class="error" v-if="error">{{ error }}</p>
+  </section>
+  <template v-else>
+    <header class="card actions"><strong>Jogging Tracker</strong><span class="muted">{{ user.username }} ({{ user.role }})</span><button class="secondary" @click="logout">Sign out</button></header>
+    <section class="card">
+      <h2>{{ editing ? 'Edit run' : 'Add a run' }}</h2>
+      <form @submit.prevent="saveEntry">
+        <input v-model.number="entry.distance" type="number" min="0" placeholder="Distance (km)" required>
+        <input v-model.number="entry.duration" type="number" min="1" placeholder="Duration (minutes)" required>
+        <input v-model="entry.date" type="date" required>
+        <button>{{ editing ? 'Update' : 'Add' }}</button><button v-if="editing" type="button" class="secondary" @click="resetEntry">Cancel</button>
+      </form>
+    </section>
+    <section class="card">
+      <h2>Runs</h2>
+      <div class="filters"><label>From <input v-model="filters.from" type="date"></label><label>To <input v-model="filters.to" type="date"></label><button @click="load">Filter</button></div>
+      <p class="error" v-if="error">{{ error }}</p>
+      <table><thead><tr><th>Date</th><th>Distance</th><th>Duration</th><th>Speed</th><th></th></tr></thead>
+      <tbody><tr v-for="run in entries" :key="run.id"><td>{{ run.date }}</td><td>{{ run.distance }}</td><td>{{ run.duration }} min</td><td>{{ run.average_speed }}</td><td><button @click="editEntry(run)">Edit</button> <button class="danger" @click="deleteEntry(run.id)">Delete</button></td></tr></tbody></table>
+      <p class="muted" v-if="!entries.length">No runs found.</p>
+    </section>
+    <section class="card"><h2>Weekly report</h2><table><thead><tr><th>Year</th><th>Week</th><th>Distance</th><th>Duration</th><th>Average speed</th></tr></thead><tbody><tr v-for="row in report" :key="row.year + '-' + row.week"><td>{{ row.year }}</td><td>{{ row.week }}</td><td>{{ row.total_distance }}</td><td>{{ row.total_duration }}</td><td>{{ row.average_speed }}</td></tr></tbody></table></section>
+  </template>
+</main>
+<script>
+const { createApp } = Vue;
+createApp({
+  data: () => ({ token: localStorage.getItem('token'), user: JSON.parse(localStorage.getItem('user') || 'null'), registering: false, error: '', entries: [], report: [], filters: { from: '', to: '' }, form: {}, entry: {}, editing: false }),
+  mounted() { if (this.token) this.load(); },
+  methods: {
+    async request(path, options = {}) { const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }; if (this.token) headers.Authorization = `Bearer ${this.token}`; const response = await fetch(`/api/${path}`, { ...options, headers }); if (!response.ok) throw new Error((await response.json()).detail || 'Request failed'); return response.status === 204 ? null : response.json(); },
+    async login() { try { const data = await this.request('auth/login/', { method: 'POST', body: JSON.stringify(this.form) }); this.start(data); } catch (e) { this.error = e.message; } },
+    async register() { try { const data = await this.request('auth/signup/', { method: 'POST', body: JSON.stringify(this.form) }); this.form = {}; this.registering = false; this.user = data; this.error = 'Account created. Please sign in.'; } catch (e) { this.error = e.message; } },
+    start(data) { this.token = data.token; this.user = data; localStorage.setItem('token', data.token); localStorage.setItem('user', JSON.stringify(data)); this.error = ''; this.load(); },
+    logout() { this.token = ''; this.user = null; localStorage.clear(); },
+    async load() { try { const query = new URLSearchParams(Object.entries(this.filters).filter(([, value]) => value)); this.entries = await this.request(`entry/?${query}`); this.report = await this.request(`weekly-report/?${query}`); } catch (e) { this.error = e.message; } },
+    resetEntry() { this.entry = { date: new Date().toISOString().slice(0, 10), distance: 0, duration: 1 }; this.editing = false; },
+    editEntry(run) { this.entry = { ...run }; this.editing = true; },
+    async saveEntry() { try { await this.request(this.editing ? `entry/${this.entry.id}/` : 'entry/', { method: this.editing ? 'PUT' : 'POST', body: JSON.stringify({ distance: this.entry.distance, duration: this.entry.duration, date: this.entry.date }) }); this.resetEntry(); this.load(); } catch (e) { this.error = e.message; } },
+    async deleteEntry(id) { if (!confirm('Delete this run?')) return; try { await this.request(`entry/${id}/`, { method: 'DELETE' }); this.load(); } catch (e) { this.error = e.message; } }
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
+{% endverbatim %}
